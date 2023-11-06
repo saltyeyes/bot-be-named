@@ -264,6 +264,58 @@ class MiscCog(commands.Cog, name="Misc"):
         )
         await ctx.send(embed=sent_embed)
 
+    @commands.command(name="rot")
+    async def rot(self, ctx, text):
+        """Shows the result of ROT-n from 1-25
+
+        Usage : `~rot "A string of text"`
+        """
+        logging_utils.log_command("rot", ctx.guild, ctx.channel, ctx.author)
+
+        emoji = None
+        owner = await self.bot.fetch_user(os.getenv("BOT_OWNER_DISCORD_ID"))
+
+        def rotn(text, n):
+            import string
+
+            out = ""
+            for l in text:
+                if l in string.ascii_letters:
+                    alphabet = (
+                        string.ascii_uppercase
+                        if l in string.ascii_uppercase
+                        else string.ascii_lowercase
+                    )
+                    out += alphabet[(alphabet.index(l) + n) % len(alphabet)]
+                else:
+                    out += l
+            return out
+
+        if len(text) > 1000:
+            embed = discord_utils.create_embed()
+            embed.add_field(
+                name=f"{constants.FAILED}!",
+                value=f"Text is too long (max length: 1000 characters)",
+            )
+            await ctx.send(embed=embed)
+            return
+
+        embeds = [discord_utils.create_embed()]
+        current_length = 0
+
+        for i in range(1, 26):
+            title, output = f"ROT-{i}", rotn(text, i)
+            current_length += len(title) + len(output)
+
+            if current_length > 5900:
+                embeds.append(discord_utils.create_embed())
+                current_length = len(title) + len(output)
+
+            embeds[-1].add_field(name=title, value=output, inline=False)
+
+        for embed in embeds:
+            await ctx.send(embed=embed)
+
 
 def setup(bot):
     bot.add_cog(MiscCog(bot))
