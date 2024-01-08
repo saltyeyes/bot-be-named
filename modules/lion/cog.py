@@ -8,8 +8,7 @@ from sqlalchemy.sql.expression import insert
 from typing import Union
 from utils import discord_utils, google_utils, logging_utils, command_predicates
 from modules.sheets import sheets_constants, sheet_utils
-from modules.solved import solved_utils
-from modules.lion import batch_update
+from modules.lion import solved_utils, batch_update
 
 
 class LionCog(commands.Cog, name="Lion"):
@@ -234,9 +233,9 @@ class LionCog(commands.Cog, name="Lion"):
             puzzle_tab = curr_sheet.get_worksheet_by_id(int(tab_id))
 
             if answer and status_info.get("update_ans"):
-                puzzle_tab.update("B3", answer.upper())
+                puzzle_tab.update_acell(label="B3", value=answer.upper())
             elif not status_info.get("update_ans"):
-                puzzle_tab.update("B3", "")
+                puzzle_tab.update_acell(label="B3", value="")
 
             curr_status = overview.acell(
                 sheets_constants.STATUS_COLUMN + str(row_to_find)
@@ -247,7 +246,7 @@ class LionCog(commands.Cog, name="Lion"):
                 curr_stat_info = sheets_constants.status_dict.get("None")
 
             overview.update_acell(
-                sheets_constants.STATUS_COLUMN + str(row_to_find), status
+                label=sheets_constants.STATUS_COLUMN + str(row_to_find), value=status
             )
 
             color = status_info.get("color")
@@ -1065,7 +1064,7 @@ class LionCog(commands.Cog, name="Lion"):
             await ctx.send(embed=embed)
             return None
 
-        overview.update("C1", hunturl)
+        overview.update_acell(label="C1", value=hunturl)
         return True
 
     # @command_predicates.is_verified()
