@@ -7,8 +7,9 @@ from nextcord.ext import commands
 from sqlalchemy.sql.expression import insert
 from typing import Union
 from utils import discord_utils, google_utils, logging_utils, command_predicates
-from modules.sheets import sheets_constants, sheet_utils
-from modules.lion import solved_utils, batch_update
+
+from modules.sheets import sheet_utils
+from modules.lion import sheets_constants, solved_utils, batch_update_utils
 
 
 class LionCog(commands.Cog, name="Lion"):
@@ -19,6 +20,175 @@ class LionCog(commands.Cog, name="Lion"):
         self.lock = asyncio.Lock()
         self.gdrive_credentials = google_utils.get_gdrive_credentials()
         self.gspread_client = google_utils.create_gspread_client()
+
+    ################################
+    # SOLVED COMMANDS WITHOUT LION #
+    ################################
+
+    @command_predicates.is_solver()
+    @commands.command(name="solved", aliases=["solvedcrab"])
+    async def solved(self, ctx: commands.Context):
+        """Changes channel name to solved-<channel-name>
+
+        Permission Category : Solver Roles only.
+        Usage: `~solved`
+
+        Note that if you use more than 2 channel renaming commands quickly, Discord automatically stops any more channel-name changes for 10 more minutes. Those channels will have to be renamed manually, or wait for the full 10 mins.
+        """
+        status = "Solved"
+        status_prefix = sheets_constants.status_dict.get(status).get("prefix_name")
+        embed = await solved_utils.status_channel(ctx, status_prefix)
+        await ctx.send(embed=embed)
+
+    @command_predicates.is_solver()
+    @commands.command(name="solvedish", aliases=["solvedishcrab"])
+    async def solvedish(self, ctx: commands.Context):
+        """Changes channel name to solvedish-<channel-name>
+
+        Permission Category : Solver Roles only.
+        Usage: `~solvedish`
+
+        Note that if you use more than 2 channel renaming commands quickly, Discord automatically stops any more channel-name changes for 10 more minutes. Those channels will have to be renamed manually, or wait for the full 10 mins.
+        """
+        status = "Solvedish"
+        status_prefix = sheets_constants.status_dict.get(status).get("prefix_name")
+        embed = await solved_utils.status_channel(ctx, status_prefix)
+        await ctx.send(embed=embed)
+
+    @command_predicates.is_solver()
+    @commands.command(name="backsolved", aliases=["backsolvedcrab"])
+    async def backsolved(self, ctx: commands.Context):
+        """Changes channel name to backsolved-<channel-name>
+
+        Permission Category : Solver Roles only.
+        Usage: `~backsolved`
+
+        Note that if you use more than 2 channel renaming commands quickly, Discord automatically stops any more channel-name changes for 10 more minutes. Those channels will have to be renamed manually, or wait for the full 10 mins.
+        """
+        status = "Backsolved"
+        status_prefix = sheets_constants.status_dict.get(status).get("prefix_name")
+        embed = await solved_utils.status_channel(ctx, status_prefix)
+        await ctx.send(embed=embed)
+
+    @command_predicates.is_solver()
+    @commands.command(name="unsolved", aliases=["unsolvedcrab"])
+    async def unsolved(self, ctx: commands.context):
+        """removes one of the solved prefixes from channel name
+
+        Permission Category : Solver Roles only.
+        Usage: `~unsolved`
+
+        Note that if you use more than 2 channel renaming commands quickly, Discord automatically stops any more channel-name changes for 10 more minutes. Those channels will have to be renamed manually, or wait for the full 10 mins.
+        """
+        # log command in console
+        logging_utils.log_command("unsolved", ctx.guild, ctx.channel, ctx.author)
+        embed = await solved_utils.status_remove(ctx)
+        await ctx.send(embed=embed)
+
+    async def movetoarchive_generic(self, ctx, archive_name: str):
+        embed = discord_utils.create_embed()
+        # Handling if mta is called from a thread
+        if await discord_utils.is_thread(ctx, ctx.channel):
+            # Checking if thread can be archived by the bot
+            try:
+                await ctx.channel.edit(archived=True)
+            except nextcord.Forbidden:
+                embed.add_field(
+                    name=f"{constants.FAILED}!",
+                    value=f"Forbidden! Have you checked if the bot has the required permisisons?",
+                )
+                await ctx.send(embed=embed)
+                return
+            embed.add_field(
+                name=f"{constants.SUCCESS}!",
+                value=f"Archived {ctx.channel.mention} thread",
+                inline=False,
+            )
+            await ctx.send(embed=embed)
+            await ctx.channel.edit(archived=True)
+            return
+
+        # Otherwise mta is called from a regular channel
+        archive_category = None
+        if archive_name is None:
+            # Find category with same name + Archive (or select combinations)
+            archive_category = (
+                await discord_utils.find_category(
+                    ctx, f"{ctx.channel.category.name} Archive"
+                )
+                or await discord_utils.find_category(
+                    ctx, f"Archive: {ctx.channel.category.name}"
+                )
+                or await discord_utils.find_category(
+                    ctx, f"{ctx.channel.category.name} archive"
+                )
+            )
+        else:
+            archive_category = await discord_utils.find_category(ctx, archive_name)
+
+        if archive_category is None:
+            if archive_name is None:
+                embed.add_field(
+                    name=f"{constants.FAILED}!",
+                    value=f"There is no category named `{ctx.channel.category.name} Archive` or "
+                    f"`Archive: {ctx.channel.category.name}`, so I cannot move {ctx.channel.mention}.",
+                    inline=False,
+                )
+                await ctx.send(embed=embed)
+                return
+            else:
+                embed.add_field(
+                    name=f"{constants.FAILED}!",
+                    value=f"There is no category named `{archive_name}`, so I cannot move {ctx.channel.mention}.",
+                    inline=False,
+                )
+                await ctx.send(embed=embed)
+                return
+
+        if discord_utils.category_is_full(archive_category):
+            embed.add_field(
+                name=f"{constants.FAILED}!",
+                value=f"`{archive_category.name}` is already full, max limit is 50 channels. Consider renaming"
+                f" `{archive_category.name}` and creating a new `{archive_category.name}`.",
+                inline=False,
+            )
+            await ctx.send(embed=embed)
+            return
+
+        try:
+            # move channel
+            await ctx.channel.edit(category=archive_category)
+            await ctx.channel.edit(position=1)
+        except nextcord.Forbidden:
+            embed.add_field(
+                name=f"{constants.FAILED}!",
+                value=f"Can you check my permissions? I can't seem to be able to move "
+                f"{ctx.channel.mention} to `{archive_category.name}`",
+                inline=False,
+            )
+            await ctx.send(embed=embed)
+            return
+
+        embed.add_field(
+            name=f"{constants.SUCCESS}!",
+            value=f"Moved channel {ctx.channel.mention} to `{archive_category.name}`",
+            inline=False,
+        )
+        await ctx.send(embed=embed)
+
+    @command_predicates.is_solver()
+    @commands.command(name="mta", aliases=["movetoarchive", "mtacrab"])
+    async def movetoarchive(self, ctx, archive_name: str = None):
+        """Finds a category with `<category_name> Archive`, and moves the channel to that category.
+        Fails if there is no such category, or is the category is full (i.e. 50 Channels).
+        If called from thread (instead of channel), closes the thread instead of moving channel.
+
+        Permission Category : Solver Roles only.
+        Usage: `~mta`
+        Usage: `~movetoarchive archive_category_name`
+        """
+        logging_utils.log_command("movetoarchive", ctx.guild, ctx.channel, ctx.author)
+        await self.movetoarchive_generic(ctx, archive_name)
 
     #################
     # LION COMMANDS #
@@ -115,7 +285,8 @@ class LionCog(commands.Cog, name="Lion"):
 
         row_to_find = chan_cell.row
 
-        tab_id = overview.acell("B" + str(row_to_find)).value
+        sheet_tab_id_col = sheets_constants.SHEET_TAB_ID_COLUMN
+        tab_id = overview.acell(sheet_tab_id_col + str(row_to_find)).value
 
         final_link = curr_sheet_link + "/edit#gid=" + str(tab_id)
 
@@ -141,6 +312,7 @@ class LionCog(commands.Cog, name="Lion"):
         Usage: ~solvedlion
         Usage: ~solvedlion "answer"
         """
+        logging_utils.log_command("solvedlion", ctx.guild, ctx.channel, ctx.author)
         await self.statuslion(ctx, "solved", answer)
 
     @command_predicates.is_solver()
@@ -152,6 +324,7 @@ class LionCog(commands.Cog, name="Lion"):
         Usage: ~backsolvedlion
         Usage: ~backsolvedlion "answer"
         """
+        logging_utils.log_command("backsolvedlion", ctx.guild, ctx.channel, ctx.author)
         await self.statuslion(ctx, "backsolved", answer)
 
     @command_predicates.is_solver()
@@ -163,6 +336,7 @@ class LionCog(commands.Cog, name="Lion"):
         Usage: ~solvedishlion
         Usage: ~solvedishlion "answer"
         """
+        logging_utils.log_command("solvedishlion", ctx.guild, ctx.channel, ctx.author)
         await self.statuslion(ctx, "solvedish", answer)
 
     @command_predicates.is_solver()
@@ -173,7 +347,8 @@ class LionCog(commands.Cog, name="Lion"):
         Permission Category : Solver Roles only.
         Usage: ~unsolvedlion
         """
-        await self.statuslion(ctx, "inprogress", answer)
+        logging_utils.log_command("unsolvedlion", ctx.guild, ctx.channel, ctx.author)
+        await self.statuslion(ctx, "in progress", answer)
 
     @command_predicates.is_solver()
     @commands.command(name="statuslion", aliases=["statlion", "stat", "puzzstatus"])
@@ -191,7 +366,6 @@ class LionCog(commands.Cog, name="Lion"):
         Usage: ~statuslion solved "answer"
         Usage: ~statuslion "custom-update-string" "answer"
         """
-        logging_utils.log_command("statuslion", ctx.guild, ctx.channel, ctx.author)
         status = status.capitalize()
         if status == "Inprogress":
             status = "In Progress"
@@ -229,17 +403,25 @@ class LionCog(commands.Cog, name="Lion"):
 
             row_to_find = chan_cell.row
 
-            tab_id = overview.acell("B" + str(row_to_find)).value
+            # discord_channel_id_col = sheets_constants.DISCORD_CHANNEL_ID_COLUMN
+            sheet_tab_id_col = sheets_constants.SHEET_TAB_ID_COLUMN
+            # puzz_name_col = overview.acell(sheets_constants.PUZZLE_NAME_COLUMN_LOCATION).value
+            status_col = overview.acell(sheets_constants.STATUS_COLUMN_LOCATION).value
+            # answer_col = overview.acell(sheets_constants.ANSWER_COLUMN_LOCATION).value
+
+            tab_ans_loc = sheets_constants.TAB_ANSWER_LOCATION
+            # chan_name_loc = sheets_constants.TAB_CHAN_NAME_LOCATION
+            # url_loc = sheets_constants.TAB_URL_LOCATION
+
+            tab_id = overview.acell(sheet_tab_id_col + str(row_to_find)).value
             puzzle_tab = curr_sheet.get_worksheet_by_id(int(tab_id))
 
             if answer and status_info.get("update_ans"):
-                puzzle_tab.update_acell(label="B3", value=answer.upper())
+                puzzle_tab.update_acell(label=tab_ans_loc, value=answer.upper())
             elif not status_info.get("update_ans"):
-                puzzle_tab.update_acell(label="B3", value="")
+                puzzle_tab.update_acell(label=tab_ans_loc, value="")
 
-            curr_status = overview.acell(
-                sheets_constants.STATUS_COLUMN + str(row_to_find)
-            ).value
+            curr_status = overview.acell(status_col + str(row_to_find)).value
             curr_stat_info = sheets_constants.status_dict.get(curr_status)
 
             if curr_stat_info is None:
@@ -352,24 +534,22 @@ class LionCog(commands.Cog, name="Lion"):
             return
 
         curr_sheet_link = result.sheet_link
-
         chan_cell, overview = None, None
-
         chan_cell, overview = await self.findchanidcell(ctx, curr_sheet_link)
-
         curr_sheet = self.gspread_client.open_by_url(curr_sheet_link)
-
         if chan_cell is None or overview is None:
             return
 
         row_to_find = chan_cell.row
 
-        tab_id = overview.acell("B" + str(row_to_find)).value
+        sheet_tab_id_col = sheets_constants.SHEET_TAB_ID_COLUMN
 
+        tab_id = overview.acell(sheet_tab_id_col + str(row_to_find)).value
         puzzle_tab = curr_sheet.get_worksheet_by_id(int(tab_id))
 
+        tab_id = overview.acell(sheet_tab_id_col + str(row_to_find)).value
+        puzzle_tab = curr_sheet.get_worksheet_by_id(int(tab_id))
         puzzle_tab.update_index(len(curr_sheet.worksheets()))
-
         embed = discord_utils.create_embed()
         embed.add_field(
             name=f"{constants.SUCCESS}!",
@@ -377,94 +557,7 @@ class LionCog(commands.Cog, name="Lion"):
             inline=False,
         )
 
-        # Handling if mtalion is called from a thread
-        if await discord_utils.is_thread(ctx, ctx.channel):
-            # Checking if thread can be archived by the bot
-            try:
-                await ctx.channel.edit(archived=True)
-            except nextcord.Forbidden:
-                embed.add_field(
-                    name=f"{constants.FAILED}!",
-                    value=f"Forbidden! Have you checked if the bot has the required permisisons?",
-                )
-                await ctx.send(embed=embed)
-                return
-            embed.add_field(
-                name=f"{constants.SUCCESS}!",
-                value=f"Archived {ctx.channel.mention} thread",
-                inline=False,
-            )
-            await ctx.send(embed=embed)
-            await ctx.channel.edit(archived=True)
-            return
-
-        # Otherwise mtalion is called from a regular channel
-        archive_category = None
-        if archive_name is None:
-            # Find category with same name + Archive (or select combinations)
-            archive_category = (
-                await discord_utils.find_category(
-                    ctx, f"{ctx.channel.category.name} Archive"
-                )
-                or await discord_utils.find_category(
-                    ctx, f"Archive: {ctx.channel.category.name}"
-                )
-                or await discord_utils.find_category(
-                    ctx, f"{ctx.channel.category.name} archive"
-                )
-            )
-        else:
-            archive_category = await discord_utils.find_category(ctx, archive_name)
-
-        if archive_category is None:
-            if archive_name is None:
-                embed.add_field(
-                    name=f"{constants.FAILED}!",
-                    value=f"There is no category named `{ctx.channel.category.name} Archive` or "
-                    f"`Archive: {ctx.channel.category.name}`, so I cannot move {ctx.channel.mention}.",
-                    inline=False,
-                )
-                await ctx.send(embed=embed)
-                return
-            else:
-                embed.add_field(
-                    name=f"{constants.FAILED}!",
-                    value=f"There is no category named `{archive_name}`, so I cannot move {ctx.channel.mention}.",
-                    inline=False,
-                )
-                await ctx.send(embed=embed)
-                return
-
-        if discord_utils.category_is_full(archive_category):
-            embed.add_field(
-                name=f"{constants.FAILED}!",
-                value=f"`{archive_category.name}` is already full, max limit is 50 channels. Consider renaming"
-                f" `{archive_category.name}` and creating a new `{archive_category.name}`.",
-                inline=False,
-            )
-            await ctx.send(embed=embed)
-            return
-
-        try:
-            # move channel
-            await ctx.channel.edit(category=archive_category)
-            await ctx.channel.edit(position=1)
-        except nextcord.Forbidden:
-            embed.add_field(
-                name=f"{constants.FAILED}!",
-                value=f"Can you check my permissions? I can't seem to be able to move "
-                f"{ctx.channel.mention} to `{archive_category.name}`",
-                inline=False,
-            )
-            await ctx.send(embed=embed)
-            return
-
-        embed.add_field(
-            name=f"{constants.SUCCESS}!",
-            value=f"Moved channel {ctx.channel.mention} to `{archive_category.name}`",
-            inline=False,
-        )
-        await ctx.send(embed=embed)
+        await self.movetoarchive_generic(ctx, archive_name)
 
     ###############################
     # LION CHANNEL/SHEET CREATION #
@@ -476,6 +569,7 @@ class LionCog(commands.Cog, name="Lion"):
         """Does the final touches on the sheet after creating a puzzle"""
         try:
             embed = discord_utils.create_embed()
+            tab_name = chan_name.replace("#", "").replace("-", " ")
 
             sheet = self.gspread_client.open_by_url(curr_sheet_link)
             overview = None
@@ -493,63 +587,66 @@ class LionCog(commands.Cog, name="Lion"):
                 return
 
             first_empty = self.firstemptyrow(overview)
+
+            discord_channel_id_col = sheets_constants.DISCORD_CHANNEL_ID_COLUMN
+            sheet_tab_id_col = sheets_constants.SHEET_TAB_ID_COLUMN
+            puzz_name_col = overview.acell(
+                sheets_constants.PUZZLE_NAME_COLUMN_LOCATION
+            ).value
+            status_col = overview.acell(sheets_constants.STATUS_COLUMN_LOCATION).value
+            answer_col = overview.acell(sheets_constants.ANSWER_COLUMN_LOCATION).value
+
             final_sheet_link = curr_sheet_link + "/edit#gid=" + str(newsheet.id)
             chan_name_for_sheet_ref = chan_name.replace("'", "''")
 
-            batch_update_builder = batch_update.BatchUpdateBuilder()
+            chan_name_for_sheet_ref = chan_name.replace("'", "''")
+            batch_update_builder = batch_update_utils.BatchUpdateBuilder()
 
-            batch_update_builder.update_cell(
-                overview.id,
-                gspread.utils.column_letter_to_index(
-                    sheets_constants.PUZZLE_NAME_COLUMN
-                )
-                - 1,
-                first_empty - 1,
-                f'=HYPERLINK("{final_sheet_link}", "{chan_name}")',
+            batch_update_builder.update_cell_by_label(
+                sheet_id=overview.id,
+                label=puzz_name_col + str(first_empty),
+                value=f'=HYPERLINK("{final_sheet_link}", "{chan_name}")',
                 is_formula=True,
             )
 
-            batch_update_builder.update_cell(
-                overview.id,
-                gspread.utils.column_letter_to_index(
-                    sheets_constants.DISCORD_CHANNEL_ID_COLUMN
-                )
-                - 1,
-                first_empty - 1,
-                str(new_chan.id),
+            batch_update_builder.update_cell_by_label(
+                sheet_id=overview.id,
+                label=discord_channel_id_col + str(first_empty),
+                value=str(new_chan.id),
             )
 
-            batch_update_builder.update_cell(
-                overview.id,
-                gspread.utils.column_letter_to_index(
-                    sheets_constants.SHEET_TAB_ID_COLUMN
-                )
-                - 1,
-                first_empty - 1,
-                str(newsheet.id),
+            batch_update_builder.update_cell_by_label(
+                sheet_id=overview.id,
+                label=sheet_tab_id_col + str(first_empty),
+                value=str(newsheet.id),
             )
 
-            batch_update_builder.update_cell(
-                overview.id,
-                gspread.utils.column_letter_to_index(sheets_constants.STATUS_COLUMN)
-                - 1,
-                first_empty - 1,
-                "Unstarted",
+            unstarted = sheets_constants.UNSTARTED_NAME
+            batch_update_builder.update_cell_by_label(
+                sheet_id=overview.id,
+                label=status_col + str(first_empty),
+                value=unstarted,
             )
 
-            batch_update_builder.update_cell(
-                overview.id,
-                gspread.utils.column_letter_to_index(sheets_constants.ANSWER_COLUMN)
-                - 1,
-                first_empty - 1,
-                f"='{chan_name_for_sheet_ref}'!B3",
+            chan_name_for_sheet_ref = tab_name.replace("'", "''")
+            tab_ans_loc = sheets_constants.TAB_ANSWER_LOCATION
+            chan_name_loc = sheets_constants.TAB_CHAN_NAME_LOCATION
+            url_loc = sheets_constants.TAB_URL_LOCATION
+
+            batch_update_builder.update_cell_by_label(
+                sheet_id=overview.id,
+                label=answer_col + str(first_empty),
+                value=f"='{chan_name_for_sheet_ref}'!{tab_ans_loc}",
                 is_formula=True,
             )
 
-            batch_update_builder.update_cell(newsheet.id, 0, 0, chan_name)
-
+            batch_update_builder.update_cell_by_label(
+                sheet_id=newsheet.id, label=chan_name_loc, value=chan_name
+            )
             if url:
-                batch_update_builder.update_cell(newsheet.id, 1, 0, url)
+                batch_update_builder.update_cell_by_label(
+                    sheet_id=newsheet.id, label=url_loc, value=url
+                )
 
             sheet.batch_update(batch_update_builder.build())
 
@@ -1064,7 +1161,8 @@ class LionCog(commands.Cog, name="Lion"):
             await ctx.send(embed=embed)
             return None
 
-        overview.update_acell(label="C1", value=hunturl)
+        overview_hunturl_loc = sheets_constants.OVERVIEW_HUNTURL_LOCATION
+        overview.update_acell(label=overview_hunturl_loc, value=hunturl)
         return True
 
     # @command_predicates.is_verified()

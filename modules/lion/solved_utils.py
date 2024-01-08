@@ -3,7 +3,7 @@ import nextcord
 import constants
 from nextcord.ext import commands
 from modules.lion.prefix import Prefix
-from modules.sheets import sheets_constants
+from modules.lion import sheets_constants
 from utils import discord_utils, logging_utils
 
 
@@ -44,7 +44,6 @@ def remove_prefix(channel, prefix: str) -> str:
 
 
 async def status_channel(ctx: commands.Context, status_prefix):
-    logging_utils.log_command("statuschannel", ctx.guild, ctx.channel, ctx.author)
     embed = discord_utils.create_embed()
     new_channel_name = add_prefix(ctx.channel, status_prefix + "-")
     if new_channel_name:

@@ -1,6 +1,7 @@
 import googleapiclient
+from modules.lion import sheets_constants
 from utils import discord_utils, google_utils, logging_utils, command_predicates
-from modules.sheets import sheets_constants, sheet_utils
+from modules.sheets import sheet_utils
 import constants
 from nextcord.ext import commands
 from nextcord.ext.tasks import loop
@@ -407,7 +408,9 @@ class SheetsCog(commands.Cog, name="Sheets"):
             serv = x.server_id
             chan = x.channel_or_cat_id
             botguilds = list(map(lambda x: x.id, self.bot.guilds))
-            if serv not in botguilds and serv != 0:
+            if serv == 0:
+                pass
+            elif serv not in botguilds and serv != 0:
                 not_in_server.add(serv)
             else:
                 serverguild = list(filter(lambda x: x.id == serv, self.bot.guilds))[0]
