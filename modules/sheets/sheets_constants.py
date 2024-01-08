@@ -2,6 +2,14 @@
 ##### SHEETS #####
 ##################
 
+# Columns for the Overview tab of the default spreadsheet
+# TODO: Find a nicer way of handling these without hard-coding them
+DISCORD_CHANNEL_ID_COLUMN = "A"
+SHEET_TAB_ID_COLUMN = "B"
+PUZZLE_NAME_COLUMN = "D"
+STATUS_COLUMN = "E"
+ANSWER_COLUMN = "F"
+
 # Put column names for tether sheet here
 CATEGORY_TAB = "Category Tethers"
 

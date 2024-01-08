@@ -9,6 +9,7 @@ from typing import Union
 from utils import discord_utils, google_utils, logging_utils, command_predicates
 from modules.sheets import sheets_constants, sheet_utils
 from modules.solved import solved_utils
+from modules.lion import batch_update
 
 
 class LionCog(commands.Cog, name="Lion"):
@@ -237,15 +238,17 @@ class LionCog(commands.Cog, name="Lion"):
             elif not status_info.get("update_ans"):
                 puzzle_tab.update("B3", "")
 
-            status_col = overview.acell("B1").value
-
-            curr_status = overview.acell(status_col + str(row_to_find)).value
+            curr_status = overview.acell(
+                sheets_constants.STATUS_COLUMN + str(row_to_find)
+            ).value
             curr_stat_info = sheets_constants.status_dict.get(curr_status)
 
             if curr_stat_info is None:
                 curr_stat_info = sheets_constants.status_dict.get("None")
 
-            overview.update_acell(status_col + str(row_to_find), status)
+            overview.update_acell(
+                sheets_constants.STATUS_COLUMN + str(row_to_find), status
+            )
 
             color = status_info.get("color")
 
@@ -491,29 +494,65 @@ class LionCog(commands.Cog, name="Lion"):
                 return
 
             first_empty = self.firstemptyrow(overview)
-
-            puzz_name_col = overview.acell("A1").value
-            answer_col = overview.acell("A2").value
-            status_col = overview.acell("B1").value
             final_sheet_link = curr_sheet_link + "/edit#gid=" + str(newsheet.id)
-
-            overview.update_acell(
-                puzz_name_col + str(first_empty),
-                f'=HYPERLINK("{final_sheet_link}", "{chan_name}")',
-            )
-
-            overview.update_acell("A" + str(first_empty), str(new_chan.id))
-            overview.update_acell("B" + str(first_empty), str(newsheet.id))
-            overview.update_acell(status_col + str(first_empty), "Unstarted")
             chan_name_for_sheet_ref = chan_name.replace("'", "''")
-            overview.update_acell(
-                answer_col + str(first_empty), f"='{chan_name_for_sheet_ref}'!B3"
+
+            batch_update_builder = batch_update.BatchUpdateBuilder()
+
+            batch_update_builder.update_cell(
+                overview.id,
+                gspread.utils.column_letter_to_index(
+                    sheets_constants.PUZZLE_NAME_COLUMN
+                )
+                - 1,
+                first_empty - 1,
+                f'=HYPERLINK("{final_sheet_link}", "{chan_name}")',
+                is_formula=True,
             )
 
-            newsheet.update_acell("A1", chan_name)
+            batch_update_builder.update_cell(
+                overview.id,
+                gspread.utils.column_letter_to_index(
+                    sheets_constants.DISCORD_CHANNEL_ID_COLUMN
+                )
+                - 1,
+                first_empty - 1,
+                str(new_chan.id),
+            )
+
+            batch_update_builder.update_cell(
+                overview.id,
+                gspread.utils.column_letter_to_index(
+                    sheets_constants.SHEET_TAB_ID_COLUMN
+                )
+                - 1,
+                first_empty - 1,
+                str(newsheet.id),
+            )
+
+            batch_update_builder.update_cell(
+                overview.id,
+                gspread.utils.column_letter_to_index(sheets_constants.STATUS_COLUMN)
+                - 1,
+                first_empty - 1,
+                "Unstarted",
+            )
+
+            batch_update_builder.update_cell(
+                overview.id,
+                gspread.utils.column_letter_to_index(sheets_constants.ANSWER_COLUMN)
+                - 1,
+                first_empty - 1,
+                f"='{chan_name_for_sheet_ref}'!B3",
+                is_formula=True,
+            )
+
+            batch_update_builder.update_cell(newsheet.id, 0, 0, chan_name)
 
             if url:
-                newsheet.update_acell("B1", url)
+                batch_update_builder.update_cell(newsheet.id, 1, 0, url)
+
+            sheet.batch_update(batch_update_builder.build())
 
             await ctx.message.add_reaction(emoji.emojize(":check_mark_button:"))
         except gspread.exceptions.APIError as e:
