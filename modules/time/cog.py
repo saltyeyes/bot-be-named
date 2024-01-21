@@ -6,7 +6,7 @@ import constants
 from modules.time import time_utils
 from nextcord.ext import commands
 from nextcord.ext.tasks import loop
-from utils import logging_utils, time_utils, google_utils, discord_utils
+from utils import logging_utils, time_utils, discord_utils
 
 # Code partially taken from Ravenclaw-Discord-Bot, also a bot by Kevslinger
 # https://github.com/kevslinger/ravenclaw-discord-bot
@@ -25,7 +25,7 @@ class TimeCog(commands.Cog, name="Time"):
 
         Usage: `~countdown September 22, 2021 9:00pm EDT`
         """
-        logging_utils.log_command("countdown", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command("countdown", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()
 
         if len(args) < 1:
@@ -61,7 +61,7 @@ class TimeCog(commands.Cog, name="Time"):
 
         Usage: `~time Mumbai`
         """
-        logging_utils.log_command("time", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command("time", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()
 
         # No location provided

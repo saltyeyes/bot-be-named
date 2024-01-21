@@ -21,19 +21,15 @@ class AdminCog(commands.Cog, name="Admin"):
 
     @command_predicates.is_bot_owner_or_admin()
     @commands.command(
-        name="addperm",
-        aliases=["addverifieds", "addverified", "addperms"],
+        name="addperm", aliases=["addverifieds", "addverified", "addperms"]
     )
     async def addperm(
-        self,
-        ctx,
-        role_permissions: str,
-        role_or_rolename: Union[nextcord.Role, str],
+        self, ctx, role_permissions: str, role_or_rolename: Union[nextcord.Role, str]
     ):
         """Add a new Permission Category for a given role on this server. Only available to server admins or bot owners.
 
         This command is necessary before most to all bot commands. Nearly all commands are restricted to some Permission Category or the other.
-        The Permission Categories available are - Verified, Trusted, Solver, Tester. 
+        The Permission Categories available are - Verified, Trusted, Solver, Tester.
 
         See `~permcathelp` for more info.
 
@@ -41,7 +37,7 @@ class AdminCog(commands.Cog, name="Admin"):
         Usage: `~addperm Verified @VerifiedRoleName`
         Usage: `~addperm Trusted @everyone`
         """
-        logging_utils.log_command("addperm", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command("addperm", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()
 
         if role_permissions not in database.VERIFIED_CATEGORIES:
@@ -140,7 +136,7 @@ class AdminCog(commands.Cog, name="Admin"):
         Permission Category : Admin or Bot Owner Roles only.
         Usage: `~listperm Verified`
         """
-        logging_utils.log_command("listperm", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command("listperm", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()
 
         if role_permissions not in database.VERIFIED_CATEGORIES:
@@ -180,17 +176,7 @@ class AdminCog(commands.Cog, name="Admin"):
     @command_predicates.is_bot_owner_or_admin()
     @commands.command(
         name="removeperm",
-        aliases=[
-            "removeverified",
-            "removeverifieds",
-            "rmverifieds",
-            "rmtrusted",
-            "removetrusted",
-            "removeperms",
-            "rmperms",
-            "rmverified",
-            "rmperm",
-        ],
+        aliases=["removeperms", "rmperms", "rmverified", "rmperm"],
     )
     async def removeperm(
         self, ctx, role_permissions: str, role_or_rolename: Union[nextcord.Role, str]
@@ -202,7 +188,9 @@ class AdminCog(commands.Cog, name="Admin"):
         Usage: `~removeperm Verified @VerifiedRoleName`
         Usage: `~removeperm Trusted @everyone`
         """
-        logging_utils.log_command("removeperm", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command(
+            "removeperm", ctx.guild, ctx.channel, ctx.author
+        )
         embed = discord_utils.create_embed()
 
         if role_permissions not in database.VERIFIED_CATEGORIES:
@@ -299,7 +287,7 @@ class AdminCog(commands.Cog, name="Admin"):
         See also : `~lsguilds`
         Usage: `~commonmemberguilds "Guild1" "Guild2"`
         """
-        logging_utils.log_command(
+        await logging_utils.log_command(
             "commonmemberguilds", ctx.guild, ctx.channel, ctx.author
         )
         embed = discord_utils.create_embed()
@@ -363,7 +351,9 @@ class AdminCog(commands.Cog, name="Admin"):
         Permission Category : Bot Owner Roles only.
         Usage: `~guildowner "Guild1"`
         """
-        logging_utils.log_command("guildowner", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command(
+            "guildowner", ctx.guild, ctx.channel, ctx.author
+        )
         embed = discord_utils.create_embed()
 
         guild = await discord_utils.find_guild(ctx, guild_name)
@@ -395,7 +385,7 @@ class AdminCog(commands.Cog, name="Admin"):
         Permission Category : Bot Owner Roles only.
         Usage: `~lsguilds`
         """
-        logging_utils.log_command("lsguilds", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command("lsguilds", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()
 
         guilds = ctx.bot.guilds
@@ -425,7 +415,7 @@ class AdminCog(commands.Cog, name="Admin"):
         Permission Category : Bot Owner Roles only.
         Usage: `~quitguild "Guildname"`
         """
-        logging_utils.log_command("quitguild", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command("quitguild", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()
 
         guild = await discord_utils.find_guild(ctx, guild_name)
@@ -464,7 +454,7 @@ class AdminCog(commands.Cog, name="Admin"):
         Permission Category : Admin or Bot Owner Roles only.
         Usage: `~setprefix !`
         """
-        logging_utils.log_command("setprefix", ctx.guild, ctx.channel, ctx.author)
+        await logging_utils.log_command("setprefix", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()
 
         with Session(database.DATABASE_ENGINE) as session:
@@ -494,7 +484,7 @@ class AdminCog(commands.Cog, name="Admin"):
         Permission Category : Admin or Bot Owner Roles only.
         Usage: `~reloaddatabasecache`
         """
-        logging_utils.log_command(
+        await logging_utils.log_command(
             "reloaddatabasecache", ctx.guild, ctx.channel, ctx.author
         )
         embed = discord_utils.create_embed()

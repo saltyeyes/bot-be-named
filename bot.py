@@ -3,13 +3,14 @@ from dotenv.main import load_dotenv
 load_dotenv(override=True)
 
 import os
+import constants
+import database
+import sqlalchemy
 import nextcord
 from nextcord.ext import commands
-import constants
-import sqlalchemy
 from sqlalchemy import insert
 from sqlalchemy.orm import Session
-import database
+from utils import logging_utils
 
 
 def get_prefix(client, message):
@@ -199,6 +200,10 @@ def main():
                         )
 
     client.run(os.getenv("DISCORD_TOKEN"))
+
+    @client.event
+    async def on_close():
+        await logging_utils.close_session()
 
 
 if __name__ == "__main__":
