@@ -2,18 +2,19 @@ import geopy
 import datetime
 import os
 import constants
-
 from modules.time import time_utils
 from nextcord.ext import commands
-from nextcord.ext.tasks import loop
-from utils import logging_utils, time_utils, discord_utils
+from utils import logging_utils, discord_utils
 
-# Code partially taken from Ravenclaw-Discord-Bot, also a bot by Kevslinger
-# https://github.com/kevslinger/ravenclaw-discord-bot
-
+"""
+Time module. Code to get time and timezone from different locations, convert timezones and similar.
+Code copied/adapted from Kevslinger's Ravenclaw-Discord-Bot repo - https://github.com/kevslinger/ravenclaw-discord-bot
+"""
 
 class TimeCog(commands.Cog, name="Time"):
-    """Get time and timezone of any location"""
+    """
+    For timezone conversions and similar.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -24,6 +25,9 @@ class TimeCog(commands.Cog, name="Time"):
         """Uses discord message time formatting to provide a countdown
 
         Usage: `~countdown September 22, 2021 9:00pm EDT`
+        Usage: `~countdown 13 Feb 2023 9 pm [UTC+5.5]`
+
+        See https://github.com/scrapinghub/dateparser/tree/master for a more comprehensive list of supported formats.
         """
         await logging_utils.log_command("countdown", ctx.guild, ctx.channel, ctx.author)
         embed = discord_utils.create_embed()

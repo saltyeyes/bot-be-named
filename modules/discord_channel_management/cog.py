@@ -1,16 +1,22 @@
-from nextcord.ext import commands
-from utils import discord_utils, logging_utils, command_predicates
 import constants
 import nextcord
-from typing import Union
 import asyncio
-from modules.lion import sheets_constants
+from typing import Union
+from utils import sheets_constants
+from nextcord.ext import commands
+from utils import discord_utils, logging_utils, command_predicates
+
+"""
+Discord Channel management module. Bundle of all discord functions and commands related to managing a specific discord channel and managing it.
+
+Code copied/adapted from DenverCoder1's  professor-vector-discord-bot repo - https://github.com/DenverCoder1/professor-vector-discord-bot
+"""
 
 
-# Big thanks to denvercoder1 and his professor-vector-discord-bot repo
-# https://github.com/DenverCoder1/professor-vector-discord-bot
-class ChannelManagementCog(commands.Cog, name="Channel Management"):
-    """Set of channel and category management commands."""
+class DiscordChannelManagementCog(commands.Cog, name="Discord Channel Management"):
+    """
+    For managing channels on discord.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -1237,4 +1243,4 @@ class ChannelManagementCog(commands.Cog, name="Channel Management"):
 
 
 def setup(bot):
-    bot.add_cog(ChannelManagementCog(bot))
+    bot.add_cog(DiscordChannelManagementCog(bot))

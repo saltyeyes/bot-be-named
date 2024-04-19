@@ -1,17 +1,9 @@
 ##################
 ##### SHEETS #####
 ##################
-
-# Columns for the Overview tab of the default spreadsheet
-# TODO: Find a nicer way of handling these without hard-coding them
-DISCORD_CHANNEL_ID_COLUMN = "A"
-SHEET_TAB_ID_COLUMN = "B"
-PUZZLE_NAME_COLUMN = "D"
-STATUS_COLUMN = "E"
-ANSWER_COLUMN = "F"
-
-# Put column names for tether sheet here
-CATEGORY_TAB = "Category Tethers"
+"""
+See: sheet_utils.py
+"""
 
 THREAD = "thread"
 CHANNEL = "channel"
@@ -85,6 +77,8 @@ solved_prefixes = [y for y in solved_prefixes if y is not None]
 
 DISCORD_CHANNEL_ID_COLUMN = "A"
 SHEET_TAB_ID_COLUMN = "B"
+OVERVIEW_COLUMN = "G"
+
 PUZZLE_NAME_COLUMN_LOCATION = "A1"  # C in TM sheet
 STATUS_COLUMN_LOCATION = "B1"  # D in TM sheet
 ANSWER_COLUMN_LOCATION = "A2"  # E in TM sheet

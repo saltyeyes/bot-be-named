@@ -1,16 +1,23 @@
 import nextcord
+import sqlalchemy
+import database
+import constants
 from nextcord.ext import commands
 from sqlalchemy.orm import Session
-import sqlalchemy
 from utils import discord_utils, logging_utils, command_predicates
-import database
 from database import models
-import constants
 from typing import Union
+
+"""
+Admin module. Bundle of commands related to Bot management and permission categories,
+as well as other commands useful for bot owners and admins generally.
+"""
 
 
 class AdminCog(commands.Cog, name="Admin"):
-    """Commands for bot management by admins and bot owners"""
+    """
+    Commands for bot owners and bot management commands for server admins.
+    """
 
     def __init__(self, bot):
         self.bot = bot
@@ -389,6 +396,7 @@ class AdminCog(commands.Cog, name="Admin"):
         embed = discord_utils.create_embed()
 
         guilds = ctx.bot.guilds
+        guilds = sorted(guilds,key=lambda guild:guild.name)
 
         if len(guilds) > 0:
             guilds_string = " ".join(["`" + guild.name + "` - \n" for guild in guilds])
