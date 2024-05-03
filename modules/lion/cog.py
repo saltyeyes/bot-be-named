@@ -428,10 +428,6 @@ class LionCog(commands.Cog, name="Lion"):
 
             # discord_channel_id_col = sheets_constants.DISCORD_CHANNEL_ID_COLUMN
             sheet_tab_id_col = sheets_constants.SHEET_TAB_ID_COLUMN
-            # puzz_name_col = overview.acell(sheets_constants.PUZZLE_NAME_COLUMN_LOCATION).value
-            status_col = overview.acell(sheets_constants.STATUS_COLUMN_LOCATION).value
-            # answer_col = overview.acell(sheets_constants.ANSWER_COLUMN_LOCATION).value
-
             tab_ans_loc = sheets_constants.TAB_ANSWER_LOCATION
             # chan_name_loc = sheets_constants.TAB_CHAN_NAME_LOCATION
             # url_loc = sheets_constants.TAB_URL_LOCATION
@@ -439,54 +435,47 @@ class LionCog(commands.Cog, name="Lion"):
             tab_id = overview.acell(sheet_tab_id_col + str(row_to_find)).value
             puzzle_tab = curr_sheet.get_worksheet_by_id(int(tab_id))
 
-            if answer and status_info.get("update_ans"):
-                puzzle_tab.update_acell(label=tab_ans_loc, value=answer.upper())
-            elif not status_info.get("update_ans"):
-                puzzle_tab.update_acell(label=tab_ans_loc, value="")
-
-            curr_status = overview.acell(status_col + str(row_to_find)).value
+            curr_status = overview.acell(
+                sheets_constants.STATUS_COLUMN + str(row_to_find)
+            ).value
             curr_stat_info = sheets_constants.status_dict.get(curr_status)
 
             if curr_stat_info is None:
                 curr_stat_info = sheets_constants.status_dict.get("None")
 
-            overview.update_acell(
-                label=sheets_constants.STATUS_COLUMN + str(row_to_find), value=status
-            )
-
             color = status_info.get("color")
 
-            body = {
-                "requests": [
-                    {
-                        "updateSheetProperties": {
-                            "properties": {
-                                "sheetId": tab_id,
-                                "tabColor": {
-                                    "red": color[0] / 255,
-                                    "green": color[1] / 255,
-                                    "blue": color[2] / 255,
-                                },
-                            },
-                            "fields": "tabColor",
-                        }
-                    }
-                ]
-            }
+            batch_update_builder = batch_update_utils.BatchUpdateBuilder()
+
+            batch_update_builder.color_update(tab_id, color)
+
+            batch_update_builder.update_cell_by_label(
+                sheet_id=overview.id,
+                label=sheets_constants.STATUS_COLUMN + str(row_to_find),
+                value=status,
+            )
+
+            if answer and status_info.get("update_ans"):
+                batch_update_builder.update_cell_by_label(
+                    sheet_id=puzzle_tab.id, label=tab_ans_loc, value=answer.upper()
+                )
+            elif not status_info.get("update_ans"):
+                batch_update_builder.update_cell_by_label(
+                    sheet_id=puzzle_tab.id, label=tab_ans_loc, value=""
+                )
 
             try:
-                curr_sheet.batch_update(body)
+                curr_sheet.batch_update(batch_update_builder.build())
             except gspread.exceptions.APIError as e:
                 error_json = e.response.json()
-                error_status = error_json.get("error", {}).get("status")
-                if error_status == "PERMISSION_DENIED":
-                    embed.add_field(
-                        name=f"{constants.FAILED}",
-                        value="Could not update the sheet.",
-                        inline=False,
-                    )
-                else:
-                    raise e
+                error_message = error_json.get("error", {}).get("message")
+                embed.add_field(
+                    name=f"{constants.FAILED}",
+                    value=f"GSheets API Error - `{error_message}`",
+                    inline=False,
+                )
+                await ctx.send(embed=embed)
+                raise e
 
             embed.add_field(
                 name=f"{constants.SUCCESS}",
@@ -613,11 +602,6 @@ class LionCog(commands.Cog, name="Lion"):
 
             discord_channel_id_col = sheets_constants.DISCORD_CHANNEL_ID_COLUMN
             sheet_tab_id_col = sheets_constants.SHEET_TAB_ID_COLUMN
-            puzz_name_col = overview.acell(
-                sheets_constants.PUZZLE_NAME_COLUMN_LOCATION
-            ).value
-            status_col = overview.acell(sheets_constants.STATUS_COLUMN_LOCATION).value
-            answer_col = overview.acell(sheets_constants.ANSWER_COLUMN_LOCATION).value
 
             final_sheet_link = curr_sheet_link + "/edit#gid=" + str(newsheet.id)
             chan_name_for_sheet_ref = chan_name.replace("'", "''")
@@ -627,7 +611,7 @@ class LionCog(commands.Cog, name="Lion"):
 
             batch_update_builder.update_cell_by_label(
                 sheet_id=overview.id,
-                label=puzz_name_col + str(first_empty),
+                label=sheets_constants.PUZZLE_NAME_COLUMN + str(first_empty),
                 value=f'=HYPERLINK("{final_sheet_link}", "{chan_name}")',
                 is_formula=True,
             )
@@ -647,7 +631,7 @@ class LionCog(commands.Cog, name="Lion"):
             unstarted = sheets_constants.UNSTARTED_NAME
             batch_update_builder.update_cell_by_label(
                 sheet_id=overview.id,
-                label=status_col + str(first_empty),
+                label=sheets_constants.STATUS_COLUMN + str(first_empty),
                 value=unstarted,
             )
 
@@ -658,7 +642,7 @@ class LionCog(commands.Cog, name="Lion"):
 
             batch_update_builder.update_cell_by_label(
                 sheet_id=overview.id,
-                label=answer_col + str(first_empty),
+                label=sheets_constants.ANSWER_COLUMN + str(first_empty),
                 value=f"='{chan_name_for_sheet_ref}'!{tab_ans_loc}",
                 is_formula=True,
             )
